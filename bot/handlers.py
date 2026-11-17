@@ -65,20 +65,27 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
 
     async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         msg = update.message
-        if not msg or not msg.photo:
+        if not msg:
             return
 
-        photo = msg.photo[-1]  # Highest resolution
         caption = msg.caption or ""
         sender = msg.from_user.full_name if msg.from_user else "Unknown"
+
+        if msg.photo:
+            file_obj = msg.photo[-1]
+            filename = f"{file_obj.file_unique_id}.jpg"
+        elif msg.document:
+            file_obj = msg.document
+            filename = msg.document.file_name or f"{file_obj.file_unique_id}.jpg"
+        else:
+            return
 
         status_msg = await msg.reply_text("⏳ Memproses foto...")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filename = f"{photo.file_unique_id}.jpg"
             local_path = os.path.join(tmpdir, filename)
             try:
-                tg_file = await photo.get_file(read_timeout=30.0)
+                tg_file = await file_obj.get_file(read_timeout=30.0)
                 await tg_file.download_to_drive(local_path, read_timeout=60.0)
                 reply = await asyncio.to_thread(
                     pipeline.process_photo, local_path, filename, caption, sender
@@ -90,6 +97,6 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
 
     app.add_handler(CommandHandler(["start", "help"], start_cmd))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_pdf))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle_photo))
 
     return app
