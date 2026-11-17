@@ -95,8 +95,28 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
 
         await status_msg.edit_text(reply)
 
+    async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        msg = update.message
+        if not msg or not msg.document:
+            return
+
+        doc = msg.document
+        filename = (doc.file_name or "").lower()
+        mime = (doc.mime_type or "").lower()
+
+        if filename.endswith(".pdf") or mime == "application/pdf":
+            await handle_pdf(update, context)
+        elif mime.startswith("image/") or filename.endswith(
+            (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+        ):
+            await handle_photo(update, context)
+        else:
+            await msg.reply_text(
+                "⚠️ Format file tidak didukung. Kirim PDF mutasi atau foto/gambar (.jpg/.png/.webp)."
+            )
+
     app.add_handler(CommandHandler(["start", "help"], start_cmd))
-    app.add_handler(MessageHandler(filters.Document.PDF, handle_pdf))
-    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle_photo))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
     return app
