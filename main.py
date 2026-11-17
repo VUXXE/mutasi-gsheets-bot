@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from datetime import datetime
 import pdfplumber
 
 from bot.handlers import build_telegram_app
@@ -19,6 +20,23 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger("mutasi-bot")
+
+
+HARI_ID = [
+    "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"
+]
+BULAN_ID = [
+    "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+]
+
+
+def format_tanggal_id(iso_date: str) -> str:
+    try:
+        dt = datetime.strptime(iso_date, "%Y-%m-%d")
+        return f"{HARI_ID[dt.weekday()]}, {dt.day:02d} {BULAN_ID[dt.month]} {dt.year}"
+    except ValueError:
+        return iso_date
 
 
 def detect_pdf_bank(local_path: str, filename: str, caption: str) -> BankType | None:
@@ -135,7 +153,7 @@ class AppPipeline:
         return (
             f"✅ Bukti transaksi {tx.bank} diproses!\n"
             f"• Status: {status_line}\n"
-            f"• Tanggal: {tx.tanggal}\n"
+            f"• Tanggal: {format_tanggal_id(tx.tanggal)}\n"
             f"• Tipe: {tx.tipe}\n"
             f"• Nominal: Rp{tx.nominal:,}\n"
             f"• File: {drive_url}"
