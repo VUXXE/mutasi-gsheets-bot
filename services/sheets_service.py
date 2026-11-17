@@ -83,9 +83,19 @@ class SheetsService:
     def get_all_rows_with_index(self, bank: BankType) -> list[tuple[int, dict]]:
         """Return (1-based sheet row_number, row_dict) for matching."""
         ws = self._get_worksheet(bank)
-        records = ws.get_all_records()
-        # Data starts at row 2 (row 1 is header)
-        return [(idx + 2, rec) for idx, rec in enumerate(records)]
+        all_values = ws.get_all_values()
+        if len(all_values) <= 1:
+            return []
+
+        headers = all_values[0]
+        rows: list[tuple[int, dict]] = []
+        for idx, row in enumerate(all_values[1:], start=2):
+            rec: dict = {}
+            for col_i, h in enumerate(headers):
+                if h and h not in rec:
+                    rec[h] = row[col_i] if col_i < len(row) else ""
+            rows.append((idx, rec))
+        return rows
 
     def mark_row_matched(
         self,
