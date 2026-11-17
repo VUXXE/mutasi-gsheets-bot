@@ -48,7 +48,7 @@ def find_matching_row(
         if row_nominal != tx.nominal:
             continue
 
-        row_dir = str(rec.get("Tipe (MASUK/KELUAR)", "UNKNOWN"))
+        row_dir = str(rec.get("Tipe") or rec.get("Tipe (MASUK/KELUAR)") or "UNKNOWN")
         if not _directions_compatible(row_dir, tx.tipe):
             continue
 
@@ -100,7 +100,7 @@ def reconcile_mutasi_batch(
         if match:
             row_num, rec = match
             mutasi.status_match = "MATCHED"
-            mutasi.link_bukti = str(rec.get("Link Bukti (Drive)", ""))
+            mutasi.link_bukti = str(rec.get("Bukti Transfer") or rec.get("Link Bukti (Drive)") or "")
             sheets.mark_row_matched(
                 bank=bank,
                 row_number=row_num,
