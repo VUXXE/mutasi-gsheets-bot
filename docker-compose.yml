@@ -1,0 +1,9 @@
+services:
+  mutasi-bot:
+    build: .
+    container_name: mutasi-gsheets-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro

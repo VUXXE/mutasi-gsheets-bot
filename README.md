@@ -34,3 +34,17 @@ Telegram bot that collects bank statements (PDF) and transfer receipts (images),
    ```bash
    pytest tests/
    ```
+
+## Deploy to VPS with Docker
+```bash
+git clone https://github.com/VUXXE/mutasi-gsheets-bot.git
+cd mutasi-gsheets-bot
+cp .env.example .env
+# Edit .env and place credentials.json in this directory
+docker compose up -d --build
+```
+Check logs:
+```bash
+docker compose logs -f
+```
+
