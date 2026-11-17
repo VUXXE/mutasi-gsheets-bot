@@ -1,4 +1,5 @@
 import logging
+import time
 import pdfplumber
 
 from bot.handlers import build_telegram_app
@@ -44,7 +45,11 @@ class AppPipeline:
     def __init__(self, config: Config) -> None:
         self.config = config
         configure_tesseract(config.tesseract_cmd)
-        self.drive = DriveService(config.google_credentials_path, config.drive_folder_id)
+        self.drive = DriveService(
+            config.google_credentials_path,
+            config.drive_folder_id,
+            credentials_json=config.google_credentials_json,
+        )
         self.sheets = SheetsService(config)
 
     def process_pdf(self, local_path: str, filename: str, caption: str, sender: str) -> str:
@@ -121,7 +126,11 @@ class AppPipeline:
 def main() -> None:
     config = load_config()
     if not config.telegram_token:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN is not set in .env")
+        logger.warning(
+            "TELEGRAM_BOT_TOKEN is not set. Waiting for secrets to be configured..."
+        )
+        while True:
+            time.sleep(60)
 
     pipeline = AppPipeline(config)
     app = build_telegram_app(config.telegram_token, pipeline)

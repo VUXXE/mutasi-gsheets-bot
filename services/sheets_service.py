@@ -1,3 +1,4 @@
+import json
 from typing import List
 import gspread
 from google.oauth2.service_account import Credentials
@@ -34,9 +35,13 @@ ANOMALI_HEADERS = [
 class SheetsService:
     def __init__(self, config: Config) -> None:
         self.config = config
-        creds = Credentials.from_service_account_file(
-            config.google_credentials_path, scopes=SHEETS_SCOPES
-        )
+        if config.google_credentials_json:
+            info = json.loads(config.google_credentials_json)
+            creds = Credentials.from_service_account_info(info, scopes=SHEETS_SCOPES)
+        else:
+            creds = Credentials.from_service_account_file(
+                config.google_credentials_path, scopes=SHEETS_SCOPES
+            )
         self.client = gspread.authorize(creds)
 
     def _get_worksheet(self, bank: BankType) -> gspread.Worksheet:

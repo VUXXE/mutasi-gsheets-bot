@@ -9,6 +9,7 @@ load_dotenv()
 class Config:
     telegram_token: str
     google_credentials_path: str
+    google_credentials_json: str
     drive_folder_id: str
     bni_spreadsheet_id: str
     bri_spreadsheet_id: str
@@ -23,6 +24,7 @@ def load_config() -> Config:
     return Config(
         telegram_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
         google_credentials_path=os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json"),
+        google_credentials_json=os.getenv("GOOGLE_CREDENTIALS_JSON", ""),
         drive_folder_id=os.getenv("GOOGLE_DRIVE_FOLDER_ID", ""),
         bni_spreadsheet_id=os.getenv("BNI_SPREADSHEET_ID", ""),
         bri_spreadsheet_id=os.getenv("BRI_SPREADSHEET_ID", ""),

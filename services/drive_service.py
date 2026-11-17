@@ -1,3 +1,4 @@
+import json
 import mimetypes
 import os
 from google.oauth2.service_account import Credentials
@@ -8,11 +9,20 @@ DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 
 class DriveService:
-    def __init__(self, credentials_path: str, folder_id: str) -> None:
+    def __init__(
+        self,
+        credentials_path: str,
+        folder_id: str,
+        credentials_json: str = "",
+    ) -> None:
         self.folder_id = folder_id
-        creds = Credentials.from_service_account_file(
-            credentials_path, scopes=DRIVE_SCOPES
-        )
+        if credentials_json:
+            info = json.loads(credentials_json)
+            creds = Credentials.from_service_account_info(info, scopes=DRIVE_SCOPES)
+        else:
+            creds = Credentials.from_service_account_file(
+                credentials_path, scopes=DRIVE_SCOPES
+            )
         self.service = build("drive", "v3", credentials=creds)
 
     def upload_file(self, local_path: str, filename: str | None = None) -> str:
