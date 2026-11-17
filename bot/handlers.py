@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 from typing import Protocol
@@ -27,7 +28,15 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
-    app = Application.builder().token(token).build()
+    app = (
+        Application.builder()
+        .token(token)
+        .connect_timeout(30.0)
+        .read_timeout(30.0)
+        .write_timeout(30.0)
+        .get_updates_read_timeout(30.0)
+        .build()
+    )
 
     async def handle_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         msg = update.message
@@ -43,11 +52,12 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             local_path = os.path.join(tmpdir, filename)
-            tg_file = await doc.get_file()
-            await tg_file.download_to_drive(local_path)
-
             try:
-                reply = pipeline.process_pdf(local_path, filename, caption, sender)
+                tg_file = await doc.get_file(read_timeout=30.0)
+                await tg_file.download_to_drive(local_path, read_timeout=60.0)
+                reply = await asyncio.to_thread(
+                    pipeline.process_pdf, local_path, filename, caption, sender
+                )
             except Exception as exc:
                 reply = f"❌ Gagal memproses PDF: {exc}"
 
@@ -67,11 +77,12 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
         with tempfile.TemporaryDirectory() as tmpdir:
             filename = f"{photo.file_unique_id}.jpg"
             local_path = os.path.join(tmpdir, filename)
-            tg_file = await photo.get_file()
-            await tg_file.download_to_drive(local_path)
-
             try:
-                reply = pipeline.process_photo(local_path, filename, caption, sender)
+                tg_file = await photo.get_file(read_timeout=30.0)
+                await tg_file.download_to_drive(local_path, read_timeout=60.0)
+                reply = await asyncio.to_thread(
+                    pipeline.process_photo, local_path, filename, caption, sender
+                )
             except Exception as exc:
                 reply = f"❌ Gagal memproses foto: {exc}"
 
