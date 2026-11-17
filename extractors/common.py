@@ -82,8 +82,8 @@ def normalize_date(raw: str) -> Optional[str]:
         except ValueError:
             pass
 
-    # DD Mon YYYY (e.g. 17 Nov 2026, 05 Oktober 2025)
-    m = re.search(r"\b(\d{1,2})\s+([A-Za-z]+)\s+(\d{2,4})\b", text)
+    # DD Mon YYYY (e.g. 17 Nov 2026, 01Jan 2026, 05 Oktober 2025)
+    m = re.search(r"\b(\d{1,2})\s*([A-Za-z]{3,})\s+(\d{2,4})\b", text)
     if m:
         day = int(m.group(1))
         mon_str = m.group(2).lower()
