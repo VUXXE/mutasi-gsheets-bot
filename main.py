@@ -92,8 +92,8 @@ class AppPipeline:
         return (
             f"✅ Mutasi {bank} selesai diproses!\n"
             f"• Total transaksi masuk sheet {bank}: {inserted}\n"
-            f"• Otomatis matched dengan bukti sebelumnya: {matched}\n"
-            f"• Drive: {drive_url}"
+            f"• Bukti transfer yang MATCHED: {matched}\n"
+            f"• File: {drive_url}"
         )
 
     def process_photo(self, local_path: str, filename: str, caption: str, sender: str) -> str:
@@ -128,14 +128,17 @@ class AppPipeline:
                 tx.tipe = "KELUAR"
 
         matched = match_receipt_against_sheet(sheets, tx)
-        status_label = "MATCHED dengan mutasi" if matched else "UNMATCHED (dicatat sebagai TRANSAKSI)"
+        if matched:
+            status_line = "🟢 MATCHED (Cocok dengan data mutasi di sheet!)"
+        else:
+            status_line = "🟡 UNMATCHED (Belum ada mutasi yang cocok, dicatat sebagai TRANSAKSI)"
         return (
             f"✅ Bukti transaksi {tx.bank} diproses!\n"
+            f"• Status: {status_line}\n"
             f"• Tanggal: {tx.tanggal}\n"
             f"• Tipe: {tx.tipe}\n"
             f"• Nominal: Rp{tx.nominal:,}\n"
-            f"• Status: {status_label}\n"
-            f"• Drive: {drive_url}"
+            f"• File: {drive_url}"
         )
 
 
