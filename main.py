@@ -103,7 +103,7 @@ class AppPipeline:
         if not mutasi_list:
             return (
                 f"⚠️ Tidak ada baris mutasi {bank} yang berhasil diekstrak.\n"
-                f"File tersimpan di Drive: {drive_url}"
+                f'• File: <a href="{drive_url}">Lihat PDF</a>'
             )
 
         inserted, matched = reconcile_mutasi_batch(sheets, bank, mutasi_list)
@@ -111,7 +111,7 @@ class AppPipeline:
             f"✅ Mutasi {bank} selesai diproses!\n"
             f"• Total transaksi masuk sheet {bank}: {inserted}\n"
             f"• Bukti transfer yang MATCHED: {matched}\n"
-            f"• File: {drive_url}"
+            f'• File: <a href="{drive_url}">Lihat PDF</a>'
         )
 
     def process_photo(self, local_path: str, filename: str, caption: str, sender: str) -> str:
@@ -134,7 +134,7 @@ class AppPipeline:
             return (
                 f"⚠️ Foto masuk ke sheet ANOMALI.\n"
                 f"• Alasan: {record.alasan}\n"
-                f"• Drive: {drive_url}"
+                f'• File: <a href="{drive_url}">Lihat File</a>'
             )
 
         # Allow caption override for MASUK / KELUAR if OCR returned UNKNOWN
@@ -156,7 +156,7 @@ class AppPipeline:
             f"• Tanggal: {format_tanggal_id(tx.tanggal)}\n"
             f"• Tipe: {tx.tipe}\n"
             f"• Nominal: Rp{tx.nominal:,}\n"
-            f"• File: {drive_url}"
+            f'• File: <a href="{drive_url}">Lihat Bukti</a>'
         )
 
 

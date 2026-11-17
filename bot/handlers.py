@@ -1,4 +1,5 @@
 import asyncio
+import html
 import os
 import tempfile
 from typing import Protocol
@@ -59,9 +60,11 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
                     pipeline.process_pdf, local_path, filename, caption, sender
                 )
             except Exception as exc:
-                reply = f"❌ Gagal memproses PDF: {exc}"
+                reply = f"❌ Gagal memproses PDF: {html.escape(str(exc))}"
 
-        await status_msg.edit_text(reply)
+        await status_msg.edit_text(
+            reply, parse_mode="HTML", disable_web_page_preview=True
+        )
 
     async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         msg = update.message
@@ -91,9 +94,11 @@ def build_telegram_app(token: str, pipeline: PipelineProtocol) -> Application:
                     pipeline.process_photo, local_path, filename, caption, sender
                 )
             except Exception as exc:
-                reply = f"❌ Gagal memproses foto: {exc}"
+                reply = f"❌ Gagal memproses foto: {html.escape(str(exc))}"
 
-        await status_msg.edit_text(reply)
+        await status_msg.edit_text(
+            reply, parse_mode="HTML", disable_web_page_preview=True
+        )
 
     async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         msg = update.message
