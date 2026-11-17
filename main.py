@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import pdfplumber
 
@@ -45,14 +46,28 @@ class AppPipeline:
     def __init__(self, config: Config) -> None:
         self.config = config
         configure_tesseract(config.tesseract_cmd)
-        self.drive = DriveService(
-            config.google_credentials_path,
-            config.drive_folder_id,
-            credentials_json=config.google_credentials_json,
-        )
-        self.sheets = SheetsService(config)
+        self._drive: DriveService | None = None
+        self._sheets: SheetsService | None = None
+
+    def _ensure_google_services(self) -> tuple[DriveService, SheetsService]:
+        if not self.config.google_credentials_json and not os.path.exists(
+            self.config.google_credentials_path
+        ):
+            raise RuntimeError(
+                "Google credentials belum dikonfigurasi (set GOOGLE_CREDENTIALS_JSON di InstaCloud)."
+            )
+        if self._drive is None:
+            self._drive = DriveService(
+                self.config.google_credentials_path,
+                self.config.drive_folder_id,
+                credentials_json=self.config.google_credentials_json,
+            )
+        if self._sheets is None:
+            self._sheets = SheetsService(self.config)
+        return self._drive, self._sheets
 
     def process_pdf(self, local_path: str, filename: str, caption: str, sender: str) -> str:
+        drive, sheets = self._ensure_google_services()
         bank = detect_pdf_bank(local_path, filename, caption)
         if bank not in ("BRI", "BNI"):
             return (
@@ -60,7 +75,7 @@ class AppPipeline:
                 "Kirim ulang PDF dengan caption 'BNI' atau 'BRI'."
             )
 
-        drive_url = self.drive.upload_file(local_path, filename=filename)
+        drive_url = drive.upload_file(local_path, filename=filename)
 
         if bank == "BRI":
             mutasi_list = extract_bri_mutasi(local_path, drive_url=drive_url)
@@ -73,7 +88,7 @@ class AppPipeline:
                 f"File tersimpan di Drive: {drive_url}"
             )
 
-        inserted, matched = reconcile_mutasi_batch(self.sheets, bank, mutasi_list)
+        inserted, matched = reconcile_mutasi_batch(sheets, bank, mutasi_list)
         return (
             f"✅ Mutasi {bank} selesai diproses!\n"
             f"• Total transaksi masuk sheet {bank}: {inserted}\n"
@@ -82,7 +97,8 @@ class AppPipeline:
         )
 
     def process_photo(self, local_path: str, filename: str, caption: str, sender: str) -> str:
-        drive_url = self.drive.upload_file(local_path, filename=filename)
+        drive, sheets = self._ensure_google_services()
+        drive_url = drive.upload_file(local_path, filename=filename)
         tx, anomaly_reason, raw_text = extract_receipt_image(
             local_path,
             drive_url=drive_url,
@@ -96,7 +112,7 @@ class AppPipeline:
                 raw_ocr_text=raw_text,
                 link_file=drive_url,
             )
-            self.sheets.append_anomaly(record)
+            sheets.append_anomaly(record)
             return (
                 f"⚠️ Foto masuk ke sheet ANOMALI.\n"
                 f"• Alasan: {record.alasan}\n"
@@ -111,7 +127,7 @@ class AppPipeline:
             elif "keluar" in cap_lower:
                 tx.tipe = "KELUAR"
 
-        matched = match_receipt_against_sheet(self.sheets, tx)
+        matched = match_receipt_against_sheet(sheets, tx)
         status_label = "MATCHED dengan mutasi" if matched else "UNMATCHED (dicatat sebagai TRANSAKSI)"
         return (
             f"✅ Bukti transaksi {tx.bank} diproses!\n"
