@@ -25,26 +25,28 @@ KELUAR_KEYWORDS = {
 }
 
 
-def _preprocess_receipt(image_path: str):
+def _run_ocr(image_path: str) -> str:
     img = cv2.imread(image_path)
     if img is None:
         raise ValueError(f"Could not read image: {image_path}")
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # Upscale small screenshots for better OCR
     h, w = gray.shape
     if max(h, w) < 1200:
         gray = cv2.resize(gray, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
-    gray = cv2.GaussianBlur(gray, (3, 3), 0)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return thresh
 
-
-def _run_ocr(image_path: str) -> str:
-    processed = _preprocess_receipt(image_path)
-    try:
-        return pytesseract.image_to_string(processed, lang="ind+eng", config="--psm 6")
-    except pytesseract.TesseractError:
-        return pytesseract.image_to_string(processed, lang="eng", config="--psm 6")
+    # Pass 1: clean grayscale (best for sharp mobile screenshots)
+    # Pass 2: Otsu threshold (best for camera photos / low contrast)
+    _, thresh = cv2.threshold(
+        cv2.GaussianBlur(gray, (3, 3), 0), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+    texts = []
+    for variant in (gray, thresh):
+        try:
+            texts.append(pytesseract.image_to_string(variant, lang="ind+eng", config="--psm 6"))
+        except pytesseract.TesseractError:
+            texts.append(pytesseract.image_to_string(variant, lang="eng", config="--psm 6"))
+    # Pick the pass that yielded more non-empty lines/characters
+    return max(texts, key=lambda t: len(t.strip()))
 
 
 def classify_and_parse_receipt(
@@ -64,17 +66,28 @@ def classify_and_parse_receipt(
     if len(matched_keywords) < 2 and "rp" not in combined:
         return None, "Foto bukan bukti transaksi (keyword transaksi tidak ditemukan)"
 
-    # Extract nominal: prioritize explicit "Rp ..." or "Nominal / Total ..." lines
+    # Extract nominal: prefer explicit "Nominal" line first, then "Rp ..." / "Total ..."
     nominal = None
-    rp_matches = re.findall(
-        r"(?:rp\.?\s*|nominal\s*[:\-]?\s*|total\s*[:\-]?\s*)(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d{4,})",
+    explicit_nominal = re.findall(
+        r"nominal\s*[:\-]?\s*(?:rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d{4,})",
         raw_text,
         flags=re.IGNORECASE,
     )
-    if rp_matches:
-        parsed_vals = [v for v in (parse_amount(m) for m in rp_matches) if v and v >= 1000]
+    if explicit_nominal:
+        parsed_vals = [v for v in (parse_amount(m) for m in explicit_nominal) if v and v >= 1000]
         if parsed_vals:
-            nominal = max(parsed_vals)
+            nominal = parsed_vals[0]
+
+    if nominal is None:
+        rp_matches = re.findall(
+            r"(?:rp\.?\s*|total\s*[:\-]?\s*|jumlah\s*[:\-]?\s*)(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d{4,})",
+            raw_text,
+            flags=re.IGNORECASE,
+        )
+        if rp_matches:
+            parsed_vals = [v for v in (parse_amount(m) for m in rp_matches) if v and v >= 1000]
+            if parsed_vals:
+                nominal = max(parsed_vals)
 
     if nominal is None:
         return None, "Nominal transaksi tidak ditemukan pada foto"

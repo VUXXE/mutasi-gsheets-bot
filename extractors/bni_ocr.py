@@ -12,8 +12,10 @@ from extractors.common import normalize_date, parse_amount
 def _preprocess_pil_image(pil_img) -> np.ndarray:
     img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2GRAY)
     img = cv2.resize(img, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
-    _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return thresh
+    # Enhance contrast for colored/light text (green/red numbers in BNI PDFs)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    img = clahe.apply(img)
+    return img
 
 
 def _extract_row_amounts(text: str) -> list[int]:
@@ -80,8 +82,17 @@ def parse_bni_ocr_text(
                 extra_desc = re.sub(r"\s+[!'\".|]+$", "", next_ln).strip()
                 i += 1
 
-        nominal = amounts[0]
-        saldo = amounts[-1] if len(amounts) > 1 else None
+        # If OCR only captured 1 number (the ending Saldo) and dropped the nominal,
+        # recover nominal from abs(prev_saldo - saldo).
+        if len(amounts) == 1 and prev_saldo is not None:
+            saldo = amounts[0]
+            nominal = abs(prev_saldo - saldo)
+            if nominal == 0:
+                i += 1
+                continue
+        else:
+            nominal = amounts[0]
+            saldo = amounts[-1] if len(amounts) > 1 else None
 
         # Determine MASUK / KELUAR via explicit CR/DB keyword first, then via Saldo delta
         upper = rest.upper()
