@@ -70,7 +70,11 @@ def match_receipt_against_sheet(sheets: SheetsService, receipt: Transaction) -> 
     match = find_matching_row(rows, receipt, target_source="MUTASI")
 
     if match:
-        row_num, _ = match
+        row_num, rec = match
+        if receipt.tipe == "UNKNOWN":
+            matched_dir = str(rec.get("Tipe") or rec.get("Tipe (MASUK/KELUAR)") or "UNKNOWN")
+            if matched_dir in ("MASUK", "KELUAR"):
+                receipt.tipe = matched_dir
         sheets.mark_row_matched(
             bank=receipt.bank,
             row_number=row_num,
