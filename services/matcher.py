@@ -61,10 +61,10 @@ def find_matching_row(
     return None
 
 
-def match_receipt_against_sheet(sheets: SheetsService, receipt: Transaction) -> bool:
+def match_receipt_against_sheet(sheets: SheetsService, receipt: Transaction) -> Optional[int]:
     """
     Match a receipt Transaction against existing MUTASI rows in the bank's sheet.
-    Returns True if matched, False if appended as UNMATCHED.
+    Returns matched 1-based sheet row number if matched, or None if appended as UNMATCHED.
     """
     rows = sheets.get_all_rows_with_index(receipt.bank)
     match = find_matching_row(rows, receipt, target_source="MUTASI")
@@ -80,10 +80,10 @@ def match_receipt_against_sheet(sheets: SheetsService, receipt: Transaction) -> 
             row_number=row_num,
             link_bukti=receipt.link_bukti,
         )
-        return True
+        return row_num
 
     sheets.append_transactions(receipt.bank, [receipt])
-    return False
+    return None
 
 
 def reconcile_mutasi_batch(

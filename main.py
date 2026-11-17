@@ -127,9 +127,9 @@ class AppPipeline:
             elif "keluar" in cap_lower:
                 tx.tipe = "KELUAR"
 
-        matched = match_receipt_against_sheet(sheets, tx)
-        if matched:
-            status_line = "🟢 MATCHED (Cocok dengan data mutasi di sheet!)"
+        matched_row = match_receipt_against_sheet(sheets, tx)
+        if matched_row is not None:
+            status_line = f"🟢 MATCHED (Baris {matched_row} di tab {tx.bank})"
         else:
             status_line = "🟡 UNMATCHED (Belum ada mutasi yang cocok, dicatat sebagai TRANSAKSI)"
         return (
